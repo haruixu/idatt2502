@@ -44,7 +44,7 @@ model = MnstRegressionModel()
 # Optimize: adjust W and b to minimize loss using stochastic gradient descent
 optimizer = torch.optim.SGD([model.W, model.b], lr=0.0001)
 for epoch in range(1000):
-    if model.accuracy(x_test, y_test) > 0.91:
+    if model.accuracy(x_test, y_test) > 0.9:
         # printing with item removes the tensor wrapper
         print("finished with accuracy %f" % model.accuracy(x_test, y_test))
         break
@@ -56,9 +56,15 @@ for epoch in range(1000):
     optimizer.step()  # Perform optimization by adjusting W and b,
     optimizer.zero_grad()  # Clear gradients for next step
 
-f, ax = plt.subplots(1, 10)
+f, ax = plt.subplots(2, 5)
 # NOTE: Remember that W is a 784x10 matrix, each column representing pixels for an entire 28x28 image, which was warped to a 784x1 matrix
 for i in range(10):
-    image = model.W[:, i].detach().reshape(28, 28)
+    j = 0
+    image = model.W[:, i].detach().reshape(28, 28).detach()
     plt.imsave(("w_%d.png" % i), image)
-    ax[0, i] = plt.imshow(image)
+    if i > 4:  # Normalizing indices
+        i = i % 5
+        j = 1
+    ax[j, i].imshow(image)
+    ax[j, i].axis('off')
+plt.show()
