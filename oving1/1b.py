@@ -1,5 +1,4 @@
 import csv
-import numpy as np
 import torch
 import matplotlib.pyplot as plt
 
@@ -70,16 +69,16 @@ x2_train = x_train[:, 1].squeeze()
 plot1.plot(x1_train, x2_train, y_train[:, 0].squeeze(
 ), 'o', label='$(x_1^{(i)},x_2^{(i)},y^{(i)})$', color='blue')
 
-grid_size = 50
+steps = 100
 # determine dimensions of grid by selecting number of points along each dimension
 x = torch.linspace(
-    torch.min(x_train[:, 0]), torch.max(x_train[:, 0]), grid_size)
+    torch.min(x_train[:, 0]), torch.max(x_train[:, 0]), steps)
 print("x", x)
 # Create the square matrix
 x = x.expand(x.shape[0], -1)
 print("x", x)
 y = torch.linspace(
-    torch.min(x_train[:, 1]), torch.max(x_train[:, 1]), grid_size)
+    torch.min(x_train[:, 1]), torch.max(x_train[:, 1]), steps)
 print("y", y)
 # Create the square matrix
 y = y.expand(x.shape[0], -1)
@@ -89,17 +88,17 @@ print("y", y)
 y = y.T
 
 # NOTE: x and y grids are 50x50. The combined grid is a 2500x2 grid, each representing a single xy-pair/point, of which there are 2500 of(50x50).
-# NOTE: In essence, the combined grid is every x, multiplied by every y
-# NOTE: The 2500x2 dimensions allow the matrix to be taken as input in the model f(x) which requires a Mx2 matrix, since W is a 2x1 matrix
-combined_grid = torch.stack((x.reshape(-1), y.reshape(-1)), dim=1)
+# NOTE: In essence, the combined grid is every (x,y) point
+# NOTE: The 2500x2 dimensions allow the matrix to be taken as input in the model f(x) which requires a Mx2 matrix, since W is a 2x1 matrix (Mx2 @ 2x1)
+xy_grid = torch.stack((x.reshape(-1), y.reshape(-1)), dim=1)
 print("----------Rehape(-1)--------")
 print(x.reshape(-1))
 print(y.reshape(-1))
 print("----------combined xy grid-----")
-print(combined_grid)
+print(xy_grid)
 
 # NOTE: Reshape the results into a [50, 50] grid from [2500, 1] grid in order to plot the results
-predictions = model.f(combined_grid).detach().reshape(grid_size, grid_size)
+predictions = model.f(xy_grid).detach().reshape(steps, steps)
 print("---------pred-------")
 print(predictions)
 print(predictions.size())

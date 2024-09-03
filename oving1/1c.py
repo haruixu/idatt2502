@@ -40,7 +40,9 @@ print(model.W, model.b)
 print("---------------")
 # Optimize: adjust W and b to minimize loss using stochastic gradient descent
 optimizer = torch.optim.SGD([model.W, model.b], 0.0000001)
-for epoch in range(1000):
+for epoch in range(100000):
+    if epoch % 100 == 0:
+        print(epoch)
     model.loss(x_train, y_train).backward()
     optimizer.step()  # Perform optimization by adjusting W and b,
     # similar to:
