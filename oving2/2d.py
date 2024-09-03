@@ -1,67 +1,64 @@
 import torch
 from torch import nn
+import torchvision
 import matplotlib.pyplot as plt
 
+mnist_train = torchvision.datasets.MNIST('./data', train=True, download=True)
+# Reshape input to 60_000x784 from 60_000x28x28
+x_train = mnist_train.data.reshape(-1, 784).float()
+y_train = torch.zeros((mnist_train.targets.shape[0], 10))  # 60_000x10 matrix
+y_train[torch.arange(mnist_train.targets.shape[0]),
+        mnist_train.targets] = 1  # Populate output - classifies the correct number
 
-x_train = torch.tensor(
-    [[0.0, 0.0], [0.0, 1.0], [1.0, 0.0], [1.0, 1.0]], dtype=torch.float32)
-y_train = torch.tensor([[0.0], [1.0], [1.0], [0.0]], dtype=torch.float32)
-print("x_train")
-print(x_train)
-print("y_train")
-print(y_train)
+mnist_test = torchvision.datasets.MNIST('./data', train=False, download=True)
+x_test = mnist_test.data.reshape(-1, 784).float()  # Reshape input
+y_test = torch.zeros((mnist_test.targets.shape[0], 10))  # Create output tensor
+y_test[torch.arange(mnist_test.targets.shape[0]),
+       mnist_test.targets] = 1  # Populate output
 
 
-class XorRegressionModel(nn.Module):
+class MnstRegressionModel(nn.Module):
     def __init__(self):
 
-        super(XorRegressionModel, self).__init__()
+        super(MnstRegressionModel, self).__init__()
         # Model variables
-        self.W1 = nn.Parameter(torch.rand((2, 2), dtype=torch.float32)*2-1)
-        self.b1 = nn.Parameter(torch.rand((1, 2), dtype=torch.float32)*2-1)
-        self.W2 = nn.Parameter(torch.rand((2, 1), dtype=torch.float32)*2-1)
-        self.b2 = nn.Parameter(torch.rand((1, 1), dtype=torch.float32)*2-1)
+        self.W = torch.zeros((784, 10), requires_grad=True)
+        self.b = torch.zeros((1, 10), requires_grad=True)
+
+    def logits(self, x):
+        return x @ self.W + self.b
 
     def f(self, x):
-        # First layer with sigmoid activation
-        hidden = torch.sigmoid(x @ self.W1 + self.b1)
-        # Second layer with sigmoid activation
-        output = torch.sigmoid(hidden @ self.W2 + self.b2)
-        return output
+        return nn.functional.softmax(self.logits(x))
 
     def loss(self, x, y):
-        return nn.functional.binary_cross_entropy(self.f(x), y)
+        return nn.functional.cross_entropy(self.logits(x), y.argmax(1))
+
+    def accuracy(self, x, y):
+        return torch.mean(torch.eq(self.f(x).argmax(1),
+                                   y.argmax(1)).float())
 
 
-model = XorRegressionModel()
-print("weights and bias\n", model.W1, model.W2, model.b1, model.b2)
+model = MnstRegressionModel()
 
 # Optimize: adjust W and b to minimize loss using stochastic gradient descent
-optimizer = torch.optim.SGD([model.W1, model.b1, model.W2, model.b2], 0.5)
-for epoch in range(20000):
-    if epoch % 1000 == 0:
-        print(epoch, model.loss(x_train, y_train))
+optimizer = torch.optim.SGD([model.W, model.b], lr=0.0001)
+for epoch in range(1000):
+    if model.accuracy(x_test, y_test) > 0.91:
+        # printing with item removes the tensor wrapper
+        print("finished with accuracy %f" % model.accuracy(x_test, y_test))
+        break
+
+    if epoch % 10 == 0:
+        print("epoch: %d, loss: %f, accuracy: %f" % (epoch, model.loss(x_train, y_train).detach().item(),
+              model.accuracy(x_test, y_test).item()))
     model.loss(x_train, y_train).backward()  # Compute loss gradients
     optimizer.step()  # Perform optimization by adjusting W and b,
     optimizer.zero_grad()  # Clear gradients for next step
 
-
-# Visualize result
-fig = plt.figure()
-ax = fig.add_subplot(projection='3d')
-
-ax.scatter(x_train[:, 0], x_train[:, 1], y_train[:, 0],
-           marker='o', label='$(x^{(i)},y^{(i)})$')
-
-ax.set_xlabel('x')
-ax.set_ylabel('y')
-ax.set_zlabel('z')
-steps = 10
-x = torch.linspace(0, 1, steps)
-y = torch.linspace(0, 1, steps)
-grid_x, grid_y = torch.meshgrid(x, y)
-xy_grid = torch.stack((grid_x.reshape(-1), grid_y.reshape(-1)), dim=1)
-z = model.f(xy_grid).detach().reshape(steps, steps)
-ax.plot_surface(grid_x, grid_y, z)
-plt.legend()
-plt.show()
+f, ax = plt.subplots(1, 10)
+# NOTE: Remember that W is a 784x10 matrix, each column representing pixels for an entire 28x28 image, which was warped to a 784x1 matrix
+for i in range(10):
+    image = model.W[:, i].detach().reshape(28, 28)
+    plt.imsave(("w_%d.png" % i), image)
+    ax[0, i] = plt.imshow(image)
