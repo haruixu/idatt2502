@@ -1,0 +1,1 @@
+{"cmd": "for column in X_new.columns:\n    print(column)", "cmd_opts": "", "import_complete": 1, "terminal": "nvimterm"}
